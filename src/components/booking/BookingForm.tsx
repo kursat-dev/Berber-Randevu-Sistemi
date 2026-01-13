@@ -137,28 +137,38 @@ export default function BookingForm() {
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
                 {/* Service Selection */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Hizmet Seçin <span className="text-red-500">*</span>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-1">
+                        Hizmet Seçin <span className="text-yellow-500">*</span>
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {services.map((service) => (
                             <button
                                 key={service._id}
                                 type="button"
                                 onClick={() => setSelectedService(service._id!)}
-                                className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${selectedService === service._id
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                                className={`group p-6 rounded-2xl border-2 transition-all duration-300 text-left relative overflow-hidden ${selectedService === service._id
+                                    ? 'border-yellow-500 bg-yellow-500/10 shadow-[0_0_20px_rgba(234,179,8,0.2)]'
+                                    : 'border-white/5 bg-white/5 hover:border-white/20'
                                     }`}
                             >
-                                <div className="font-semibold text-gray-900 dark:text-white">
+                                {selectedService === service._id && (
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-500/20 rounded-bl-full flex items-center justify-center pl-4 pb-4">
+                                        <svg className="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                )}
+                                <div className={`font-black text-lg tracking-tight uppercase italic mb-1 transition-colors ${selectedService === service._id ? 'text-yellow-500' : 'text-white'}`}>
                                     {service.name}
                                 </div>
-                                <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                <div className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
                                     {service.description}
                                 </div>
-                                <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
-                                    {formatCurrency(service.price)}
+                                <div className="flex items-center gap-2 mt-4">
+                                    <div className={`text-xl font-black ${selectedService === service._id ? 'text-white' : 'text-yellow-500'}`}>
+                                        {formatCurrency(service.price)}
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">KDV Dahil</div>
                                 </div>
                             </button>
                         ))}
@@ -167,45 +177,47 @@ export default function BookingForm() {
 
                 {/* Date Selection */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Tarih Seçin <span className="text-red-500">*</span>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-1">
+                        Tarih Seçin <span className="text-yellow-500">*</span>
                     </label>
-                    <DatePicker
-                        selected={selectedDate}
-                        onChange={(date: Date | null) => setSelectedDate(date)}
-                        filterDate={filterDate}
-                        minDate={new Date()}
-                        dateFormat="dd/MM/yyyy"
-                        locale="tr"
-                        placeholderText="Tarih seçin"
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        inline
-                    />
+                    <div className="premium-datepicker-wrapper">
+                        <DatePicker
+                            selected={selectedDate}
+                            onChange={(date: Date | null) => setSelectedDate(date)}
+                            filterDate={filterDate}
+                            minDate={new Date()}
+                            dateFormat="dd/MM/yyyy"
+                            locale="tr"
+                            placeholderText="Tarih seçin"
+                            className="w-full px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
+                            inline
+                        />
+                    </div>
                 </div>
 
                 {/* Time Slot Selection */}
                 {selectedDate && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                            Saat Seçin <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 px-1">
+                            Saat Seçin <span className="text-yellow-500">*</span>
                         </label>
                         {isLoading ? (
                             <div className="text-center py-8 text-gray-500">
                                 Müsait saatler yükleniyor...
                             </div>
                         ) : timeSlots.length > 0 ? (
-                            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                                 {timeSlots.map((slot) => (
                                     <button
                                         key={slot.time}
                                         type="button"
                                         disabled={!slot.available}
                                         onClick={() => setSelectedTimeSlot(slot.time)}
-                                        className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 ${selectedTimeSlot === slot.time
-                                            ? 'bg-blue-600 text-white shadow-lg'
+                                        className={`px-4 py-3 rounded-xl font-bold transition-all duration-300 border-2 ${selectedTimeSlot === slot.time
+                                            ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]'
                                             : slot.available
-                                                ? 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 text-gray-900 dark:text-white'
-                                                : 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed opacity-50'
+                                                ? 'bg-white/5 border-white/5 hover:border-white/20 text-white'
+                                                : 'bg-black/20 border-white/5 text-gray-600 cursor-not-allowed opacity-50'
                                             }`}
                                     >
                                         {slot.time}
@@ -241,7 +253,7 @@ export default function BookingForm() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">
                         Not (Opsiyonel)
                     </label>
                     <textarea
@@ -249,7 +261,7 @@ export default function BookingForm() {
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Varsa özel isteklerinizi yazabilirsiniz"
                         rows={3}
-                        className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-5 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/50"
                     />
                 </div>
 
@@ -260,12 +272,12 @@ export default function BookingForm() {
                 )}
 
                 {selectedService && selectedServiceData && (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-5 rounded-xl">
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 p-6 rounded-2xl">
                         <div className="flex justify-between items-center">
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">
+                            <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">
                                 Toplam Ücret:
                             </span>
-                            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            <span className="text-3xl font-black text-yellow-500">
                                 {formatCurrency(selectedServiceData.price)}
                             </span>
                         </div>
@@ -274,7 +286,7 @@ export default function BookingForm() {
 
                 <Button
                     type="submit"
-                    variant="primary"
+                    variant="gold"
                     size="lg"
                     className="w-full"
                     isLoading={isSubmitting}
