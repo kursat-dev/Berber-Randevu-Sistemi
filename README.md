@@ -70,7 +70,7 @@ Modern, production-ready barber appointment booking system built with Next.js an
 
 4. **Seed the database**
    ```bash
-   npx ts-node scripts/seed.ts
+   npm run db:seed
    ```
 
 5. **Start development server**
