@@ -8,7 +8,6 @@ const WorkingHoursSchema = new Schema<IWorkingHours>(
             required: [true, 'Gün numarası gereklidir'],
             min: 0,
             max: 6,
-            unique: true,
         },
         isOpen: {
             type: Boolean,
