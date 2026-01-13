@@ -54,19 +54,21 @@ export default function Modal({
                         >
                             <Dialog.Panel
                                 className={cn(
-                                    'w-full transform overflow-hidden rounded-2xl bg-white dark:bg-gray-900 p-6 text-left align-middle shadow-2xl transition-all',
+                                    'w-full transform overflow-hidden rounded-[2rem] glass p-8 text-left align-middle shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 transition-all',
                                     sizes[size]
                                 )}
                             >
                                 {title && (
                                     <Dialog.Title
                                         as="h3"
-                                        className="text-xl font-semibold leading-6 text-gray-900 dark:text-white mb-4"
+                                        className="text-2xl font-black italic tracking-tighter uppercase text-yellow-500 mb-6"
                                     >
                                         {title}
                                     </Dialog.Title>
                                 )}
-                                {children}
+                                <div className="text-white">
+                                    {children}
+                                </div>
                             </Dialog.Panel>
                         </Transition.Child>
                     </div>
