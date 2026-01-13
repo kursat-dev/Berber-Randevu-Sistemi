@@ -6,7 +6,6 @@ const AdminSchema = new Schema<IAdmin>(
         username: {
             type: String,
             required: [true, 'Kullanıcı adı gereklidir'],
-            unique: true,
             trim: true,
             lowercase: true,
         },
