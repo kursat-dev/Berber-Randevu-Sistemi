@@ -22,14 +22,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await connectToDatabase();
 
     if (req.method === 'GET') {
-        // Get booked slots for a specific date
-        const { date } = req.query;
-
-        if (!date) {
-            return res.status(400).json({ error: 'Date parameter is required' });
-        }
+        const { date, all } = req.query;
+        
+        console.log('GET /api/appointments - Query params:', { date, all, query: req.query });
 
         try {
+            // If all=true, return all appointments (for admin panel)
+            if (all === 'true' || all === true) {
+                console.log('Fetching all appointments for admin');
+                const appointments = await Appointment.find({})
+                    .sort({ tarih: 1, saat: 1 }); // Sort by date and time
+                // Map _id to id for frontend compatibility
+                const mappedAppointments = appointments.map(apt => ({
+                    ...apt.toObject(),
+                    id: apt._id.toString()
+                }));
+                return res.status(200).json(mappedAppointments);
+            }
+
+            // Otherwise, require date parameter for regular users
+            if (!date) {
+                return res.status(400).json({ error: 'Date parameter is required' });
+            }
+
+            // Get booked slots for a specific date
             const appointments = await Appointment.find({
                 tarih: date as string,
                 durum: { $ne: 'iptal' } // Don't block cancelled slots
