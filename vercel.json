@@ -1,23 +1,13 @@
 {
-    "version": 2,
-    "builds": [
+    "rewrites": [
         {
-            "src": "server/index.ts",
-            "use": "@vercel/node"
+            "source": "/api/(.*)",
+            "destination": "/api/$1"
         },
         {
-            "src": "client/package.json",
-            "use": "@vercel/next"
+            "source": "/(.*)",
+            "destination": "/index.html"
         }
     ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "/server/index.ts"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/client/$1"
-        }
-    ]
+    "devCommand": "npm run dev"
 }
