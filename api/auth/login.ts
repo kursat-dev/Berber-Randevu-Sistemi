@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import connectToDatabase from '../db';
-import User from '../models/User';
+import connectToDatabase from '../db.js';
+import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
@@ -42,15 +42,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({
             token,
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 email: user.email,
                 role: user.role,
                 user_metadata: user.metadata // Start matching Supabase structure for easier frontend migration
             }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Login error:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ 
+            error: 'Internal Server Error',
+            message: error?.message || 'An error occurred during login'
+        });
     }
 }

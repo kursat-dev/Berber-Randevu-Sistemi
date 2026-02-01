@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
-import connectToDatabase from './db';
+import connectToDatabase from './db.js';
 
 // Define Schema
 const AppointmentSchema = new mongoose.Schema({
@@ -28,13 +28,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         try {
             // If all=true, return all appointments (for admin panel)
-            if (all === 'true' || all === true) {
+            if (all === 'true') {
                 console.log('Fetching all appointments for admin');
                 const appointments = await Appointment.find({})
-                    .sort({ tarih: 1, saat: 1 }); // Sort by date and time
+                    .sort({ tarih: 1, saat: 1 })
+                    .lean(); // Use lean() for better performance
                 // Map _id to id for frontend compatibility
-                const mappedAppointments = appointments.map(apt => ({
-                    ...apt.toObject(),
+                const mappedAppointments = appointments.map((apt: any) => ({
+                    ...apt,
                     id: apt._id.toString()
                 }));
                 return res.status(200).json(mappedAppointments);
@@ -104,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const updatedAppointment = await Appointment.findByIdAndUpdate(
                 id,
                 { durum },
-                { new: true }
+                { new: true, lean: false }
             );
 
             if (!updatedAppointment) {
