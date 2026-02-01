@@ -1,73 +1,184 @@
-# Welcome to your Lovable project
+# 💈 Berber Randevu Sistemi
 
-## Project info
+Modern ve şık bir berber randevu yönetim sistemi. Müşterilerin kolayca randevu almasını sağlarken, işletme sahiplerine tüm süreci yönetebilecekleri güçlü bir yönetim paneli sunar.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Headless-47A248?logo=mongodb&logoColor=white)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## 🚀 Özellikler
 
-**Use Lovable**
+### 👤 Müşteriler İçin
+- **Kolay Randevu Alma**: Kullanıcı dostu arayüz ile tarih ve saat seçimi.
+- **Hizmet Seçimi**: Farklı berber hizmetleri arasından seçim yapabilme.
+- **Dolu Saat Kontrolü**: Seçilen tarihteki dolu saatleri otomatik görme.
+- **Responsive Tasarım**: Mobil ve masaüstü cihazlarda kusursuz deneyim.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 🛡️ Yönetim Paneli (Admin)
+- **Randevu Takibi**: Tüm randevuları listeleyebilme ve filtreleme.
+- **Durum Güncelleme**: Randevuları onaylama, iptal etme veya tamamlama.
+- **Güvenli Giriş**: JWT tabanlı yönetici kimlik doğrulaması.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 🏗️ Mimari ve Veri Akışı
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### High-Level Architecture
+Uygulama, modern bir SPA (Single Page Application) olarak tasarlanmıştır. Backend, Vercel Serverless Function'lar üzerinde çalışarak ölçeklenebilirlik sağlar.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```mermaid
+graph TD
+    subgraph Client ["Client Side (Browser)"]
+        UI[React UI]
+        Router[React Router]
+        State[React Hooks / State]
+    end
 
-Follow these steps:
+    subgraph Server ["Serverless Backend (Vercel)"]
+        API[Express App / API Routes]
+        Auth[Auth Controller]
+        Apt[Appointment Controller]
+    end
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+    subgraph Database ["Data Storage"]
+        Mongo[(MongoDB Atlas)]
+    end
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+    User((User)) -->|Interacts| UI
+    UI -->|Navigates| Router
+    UI -->|HTTP Requests| API
+    
+    API -->|Validate| Auth
+    API -->|CRUD Ops| Apt
+    
+    Apt -->|Query/Update| Mongo
+    Auth -->|User Check| Mongo
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Randevu Oluşturma Akışı
+Kullanıcının randevu alma sürecindeki veri akışı ve çakışma kontrolü aşağıdaki gibidir:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```mermaid
+sequenceDiagram
+    participant U as Kullanıcı
+    participant FE as Frontend (React)
+    participant API as API (Express)
+    participant DB as MongoDB
+
+    Note over U, FE: Tarih Seçimi
+    U->>FE: Bir tarih seçer
+    FE->>API: GET /api/appointments?date=YYYY-MM-DD
+    API->>DB: find({ tarih: date, durum: !=iptal })
+    DB-->>API: Dolu Saatleri Döndür
+    API-->>FE: [10:00, 14:30, ...]
+    FE->>U: Dolu saatleri pasif göster
+
+    Note over U, FE: Randevu Onayı
+    U->>FE: Saat ve Hizmet Seçer -> "Randevu Al"
+    FE->>API: POST /api/appointments
+    
+    rect rgb(240, 240, 240)
+        Note right of API: Çakışma Kontrolü (Critical Section)
+        API->>DB: findOne({ tarih, saat, durum: !=iptal })
+        alt Saat doluysa
+            DB-->>API: Kayıt bulundu
+            API-->>FE: 409 Conflict "Saat Dolu"
+            FE-->>U: Hata Mesajı Göster
+        else Saat boşsa
+            DB-->>API: null
+            API->>DB: create({ ...details })
+            DB-->>API: Yeni Kayıt
+            API-->>FE: 201 Created
+            FE-->>U: Başarılı Mesajı & Yönlendirme
+        end
+    end
+```
+
+---
+
+## 🛠️ Teknolojiler
+
+| Alan | Teknoloji | Açıklama |
+|------|-----------|----------|
+| **Frontend** | React, TypeScript | Tip güvenli UI geliştirme |
+| **Build Tool** | Vite | Hızlı geliştirme ve build süreci |
+| **Styling** | TailwindCSS, Shadcn UI | Modern ve hızlı stil yapısı |
+| **Backend** | Node.js, Express | Serverless uyumlu REST API |
+| **Database** | MongoDB, Mongoose | Esnek veri modelleme |
+| **Auth** | JWT (JSON Web Tokens) | Güvenli oturum yönetimi |
+| **Deploy** | Vercel | Frontend ve Backend hosting |
+
+---
+
+## 💻 Kurulum ve Çalıştırma
+
+Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyin.
+
+### 1. Ön Gereksinimler
+- Node.js (v18 veya üzeri)
+- MongoDB Connection String (MongoDB Atlas önerilir)
+
+### 2. Repoyu Klonlayın
+```bash
+git clone <REPO_URL>
+cd berber-randevu-sistemi
+```
+
+### 3. Bağımlılıkları Yükleyin
+```bash
+npm install
+```
+
+### 4. Çevre Değişkenlerini Ayarlayın
+Ana dizinde `.env.local` dosyası oluşturun ve aşağıdaki değişkenleri ekleyin:
+
+```env
+MONGODB_URI=mongodb+srv://<kullanici>:<sifre>@cluster.mongodb.net/berber-db
+JWT_SECRET=cok-gizli-super-guvenli-anahtar
+```
+
+### 5. Projeyi Başlatın
+
+**Frontend ve Backend'i birlikte çalıştırmak için (Önerilen):**
+Bu komut `vercel dev` simülasyonunu kullanır.
+```bash
+npm run local
+```
+
+**Sadece Frontend'i çalıştırmak için:**
+Backend API çalışmayacaktır, sadece UI geliştirmesi için uygundur.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 📂 Proje Yapısı
 
-**Use GitHub Codespaces**
+```
+berber-randevu-sistemi/
+├── api/                # Backend API kodları (Vercel Serverless)
+│   ├── auth/           # Kimlik doğrulama rotaları
+│   ├── models/         # Mongoose veritabanı modelleri
+│   ├── appointments.ts # Randevu işlemleri
+│   └── db.ts           # Veritabanı bağlantısı
+├── src/                # Frontend React uygulaması
+│   ├── components/     # UI bileşenleri (Button, Input vs.)
+│   ├── pages/          # Sayfalar (Giriş, Randevu, Admin vs.)
+│   ├── lib/            # Yardımcı fonksiyonlar
+│   ├── hooks/          # Custom React hooks
+│   ├── App.tsx         # Ana uygulama bileşeni
+│   └── main.tsx        # Giriş noktası
+├── public/             # Statik dosyalar
+└── ...config files     # Vite, Tailwind, TS yapılandırmaları
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 🔒 Lisans
+Bu proje MIT lisansı ile lisanslanmıştır.
