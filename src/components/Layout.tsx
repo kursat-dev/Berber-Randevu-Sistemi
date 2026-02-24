@@ -37,9 +37,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center transition-transform group-hover:scale-105">
-                <Scissors className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img src="/image.png" alt="Berber Logo" className="w-10 h-10 rounded-full object-cover transition-transform group-hover:scale-105" />
               <span className="font-display text-2xl tracking-wider">BERBER</span>
             </Link>
 
@@ -184,9 +182,7 @@ const Layout = ({ children }: LayoutProps) => {
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 bg-primary-foreground rounded-full flex items-center justify-center">
-                  <Scissors className="w-5 h-5 text-primary" />
-                </div>
+                <img src="/image.png" alt="Berber Logo" className="w-10 h-10 rounded-full object-cover" />
                 <span className="font-display text-2xl tracking-wider">BERBER</span>
               </div>
               <p className="text-primary-foreground/70 text-sm">
@@ -198,13 +194,13 @@ const Layout = ({ children }: LayoutProps) => {
             <div>
               <h3 className="font-display text-xl mb-4">İLETİŞİM</h3>
               <div className="space-y-3">
-                <a href="tel:+905551234567" className="flex items-center gap-3 text-primary-foreground/80 hover:text-primary-foreground transition-colors">
+                <a href="tel:+905057458251" className="flex items-center gap-3 text-primary-foreground/80 hover:text-primary-foreground transition-colors">
                   <Phone className="w-4 h-4" />
-                  <span className="text-sm">+90 555 123 45 67</span>
+                  <span className="text-sm">+90 505 745 82 51</span>
                 </a>
                 <div className="flex items-start gap-3 text-primary-foreground/80">
                   <MapPin className="w-4 h-4 mt-0.5" />
-                  <span className="text-sm">Atatürk Caddesi No: 123<br />Merkez / İstanbul</span>
+                  <span className="text-sm">Trabzon Akçaabat Belediye Binası Yanı,<br />Kolotoğlu Ahmet Usta Karşısı,<br />Kofoğlu İş Hanı</span>
                 </div>
               </div>
             </div>

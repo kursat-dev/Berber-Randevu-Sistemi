@@ -11,19 +11,15 @@ import { format, addDays, isBefore, startOfToday } from "date-fns";
 import { tr } from "date-fns/locale";
 import Layout from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
-// Supabase import removed
 import { useAuth } from "@/contexts/AuthContext";
 
-const allTimeSlots = [
-  "09:00", "10:00", "11:00", "12:00",
-  "13:00", "14:00", "15:00", "16:00",
-  "17:00", "18:00", "19:00"
-];
-
-const serviceTypes = [
-  { id: "sac", label: "Saç Traşı", duration: "~45 dk" },
-  { id: "sac-sakal", label: "Saç + Sakal", duration: "~1 saat" },
-];
+interface Service {
+  id: string;
+  label: string;
+  price: number;
+  duration: string;
+  note?: string;
+}
 
 const Randevu = () => {
   const navigate = useNavigate();
@@ -38,6 +34,25 @@ const Randevu = () => {
     tarih: undefined as Date | undefined,
     saat: "",
   });
+
+  // Dynamic data from settings API
+  const [serviceTypes, setServiceTypes] = useState<Service[]>([]);
+  const [allTimeSlots, setAllTimeSlots] = useState<string[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<Record<string, string[]>>({});
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  // Fetch settings on mount
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.services) setServiceTypes(data.services);
+        if (data.timeSlots) setAllTimeSlots(data.timeSlots);
+        if (data.blockedSlots) setBlockedSlots(data.blockedSlots);
+      })
+      .catch((err) => console.error("Error fetching settings:", err))
+      .finally(() => setSettingsLoading(false));
+  }, []);
 
   // Update form data when user loads
   useEffect(() => {
@@ -82,7 +97,17 @@ const Randevu = () => {
     }
   };
 
-  const availableTimeSlots = allTimeSlots.filter(slot => !bookedSlots.includes(slot));
+  // Get blocked slots for the selected date
+  const getBlockedSlotsForDate = (date: Date | undefined): string[] => {
+    if (!date) return [];
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return blockedSlots[dateStr] || [];
+  };
+
+  const dateBlockedSlots = getBlockedSlotsForDate(formData.tarih);
+  const availableTimeSlots = allTimeSlots.filter(
+    slot => !bookedSlots.includes(slot) && !dateBlockedSlots.includes(slot)
+  );
 
   const handleSubmit = async () => {
     // Validate all fields
@@ -144,6 +169,8 @@ const Randevu = () => {
     }
   };
 
+  const selectedService = serviceTypes.find(s => s.id === formData.hizmet);
+
   if (isSuccess) {
     return (
       <Layout>
@@ -165,9 +192,15 @@ const Randevu = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Hizmet:</span>
                   <span className="font-medium">
-                    {serviceTypes.find(s => s.id === formData.hizmet)?.label}
+                    {selectedService?.label}
                   </span>
                 </div>
+                {selectedService && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Ücret:</span>
+                    <span className="font-medium">{selectedService.price.toLocaleString('tr-TR')}₺</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tarih:</span>
                   <span className="font-medium">
@@ -189,6 +222,19 @@ const Randevu = () => {
     );
   }
 
+  if (settingsLoading) {
+    return (
+      <Layout>
+        <div className="min-h-[80vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Yükleniyor...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="min-h-[80vh] py-12">
@@ -199,11 +245,6 @@ const Randevu = () => {
               Birkaç adımda randevunuzu oluşturun.
             </p>
           </div>
-
-
-          {/* Auth Warning for Unauthenticated Users */}
-
-          {/* Guest Booking Enabled - No Warning Needed */}
 
 
           {/* Progress Steps */}
@@ -316,8 +357,16 @@ const Randevu = () => {
                           )}
                         >
                           <div className="flex justify-between items-center">
-                            <span className="font-medium">{service.label}</span>
-                            <span className="text-sm text-muted-foreground">{service.duration}</span>
+                            <div>
+                              <span className="font-medium">{service.label}</span>
+                              {service.note && (
+                                <p className="text-xs text-muted-foreground mt-1 italic">{service.note}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <span className="font-display text-lg text-primary">{service.price.toLocaleString('tr-TR')}₺</span>
+                              <span className="text-xs text-muted-foreground block">{service.duration}</span>
+                            </div>
                           </div>
                         </button>
                       ))}
@@ -399,14 +448,16 @@ const Randevu = () => {
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                               {allTimeSlots.map((time) => {
                                 const isBooked = bookedSlots.includes(time);
+                                const isBlocked = dateBlockedSlots.includes(time);
+                                const isUnavailable = isBooked || isBlocked;
                                 return (
                                   <button
                                     key={time}
-                                    onClick={() => !isBooked && setFormData({ ...formData, saat: time })}
-                                    disabled={isBooked}
+                                    onClick={() => !isUnavailable && setFormData({ ...formData, saat: time })}
+                                    disabled={isUnavailable}
                                     className={cn(
                                       "p-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-center gap-1",
-                                      isBooked
+                                      isUnavailable
                                         ? "border-border bg-muted text-muted-foreground cursor-not-allowed line-through"
                                         : formData.saat === time
                                           ? "border-primary bg-primary text-primary-foreground"
@@ -436,8 +487,14 @@ const Randevu = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Hizmet:</span>
-                          <span>{serviceTypes.find(s => s.id === formData.hizmet)?.label}</span>
+                          <span>{selectedService?.label}</span>
                         </div>
+                        {selectedService && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Ücret:</span>
+                            <span className="font-medium text-primary">{selectedService.price.toLocaleString('tr-TR')}₺</span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Tarih:</span>
                           <span>{format(formData.tarih, "d MMMM yyyy", { locale: tr })}</span>

@@ -1,9 +1,29 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Scissors, Clock, Check, ArrowRight } from "lucide-react";
+import { Scissors, Clock, Check, ArrowRight, TurkishLira } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Layout from "@/components/Layout";
 
+interface Service {
+  id: string;
+  label: string;
+  price: number;
+  duration: string;
+  note?: string;
+}
+
 const Home = () => {
+  const [services, setServices] = useState<Service[]>([]);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.services) setServices(data.services);
+      })
+      .catch((err) => console.error("Error fetching services:", err));
+  }, []);
+
   return (
     <Layout>
       {/* Hero Section */}
@@ -21,13 +41,13 @@ const Home = () => {
               <Scissors className="w-4 h-4" />
               <span className="text-sm font-medium">Profesyonel Berberlik Hizmeti</span>
             </div>
-            
+
             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl mb-6 tracking-wider">
               STİLİNİZE<br />DOKUNUYORUZ
             </h1>
-            
+
             <p className="text-primary-foreground/80 text-lg md:text-xl max-w-2xl mx-auto mb-8">
-              Uzman berberlerimiz ile saç ve sakal bakımınızı güvenle bize bırakın. 
+              Uzman berberlerimiz ile saç ve sakal bakımınızı güvenle bize bırakın.
               Online randevu ile zaman kaybetmeden hizmet alın.
             </p>
 
@@ -38,7 +58,7 @@ const Home = () => {
                   <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </Link>
-              <a href="tel:+905551234567">
+              <a href="tel:+905057458251">
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6 font-medium border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
                   Bizi Arayın
                 </Button>
@@ -58,36 +78,27 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {/* Saç Traşı */}
-            <div className="group bg-card border border-border rounded-lg p-8 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Scissors className="w-8 h-8 text-primary-foreground" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {services.map((service) => (
+              <div key={service.id} className="group bg-card border border-border rounded-lg p-8 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Scissors className="w-8 h-8 text-primary-foreground" />
+                </div>
+                <h3 className="font-display text-xl mb-3">{service.label.toUpperCase()}</h3>
+                {service.note && (
+                  <p className="text-muted-foreground text-sm mb-3 italic">{service.note}</p>
+                )}
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span>{service.duration}</span>
+                  </div>
+                  <div className="font-display text-xl text-primary">
+                    {service.price.toLocaleString('tr-TR')}₺
+                  </div>
+                </div>
               </div>
-              <h3 className="font-display text-2xl mb-3">SAÇ TRAŞI</h3>
-              <p className="text-muted-foreground mb-4">
-                Modern kesim teknikleri ile istediğiniz saç modeli.
-              </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>~45 dakika</span>
-              </div>
-            </div>
-
-            {/* Saç + Sakal */}
-            <div className="group bg-card border border-border rounded-lg p-8 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Scissors className="w-8 h-8 text-primary-foreground" />
-              </div>
-              <h3 className="font-display text-2xl mb-3">SAÇ + SAKAL</h3>
-              <p className="text-muted-foreground mb-4">
-                Komple bakım paketi ile hem saç hem sakal düzenleme.
-              </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>~1 saat</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>

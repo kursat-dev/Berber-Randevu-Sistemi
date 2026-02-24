@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, User, Phone, Check, X, LogOut, Scissors, RefreshCw } from "lucide-react";
+import { Calendar, Clock, User, Phone, Check, X, LogOut, Scissors, RefreshCw, Settings, Plus, Trash2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
-// Supabase import removed
 import { useToast } from "@/hooks/use-toast";
 
 interface Appointment {
@@ -22,10 +26,13 @@ interface Appointment {
   created_at: string;
 }
 
-const serviceLabels: Record<string, string> = {
-  "sac": "Saç Traşı",
-  "sac-sakal": "Saç + Sakal"
-};
+interface Service {
+  id: string;
+  label: string;
+  price: number;
+  duration: string;
+  note: string;
+}
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -34,6 +41,22 @@ const Admin = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Settings state
+  const [services, setServices] = useState<Service[]>([]);
+  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<Record<string, string[]>>({});
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [newTimeSlot, setNewTimeSlot] = useState("");
+  const [blockDate, setBlockDate] = useState<Date | undefined>(undefined);
+  const [blockTimeSlot, setBlockTimeSlot] = useState("");
+
+  // Service labels map derived from settings
+  const serviceLabels: Record<string, string> = {};
+  services.forEach((s) => {
+    serviceLabels[s.id] = s.label;
+  });
 
   useEffect(() => {
     if (!isLoading && (!user || !isAdmin)) {
@@ -44,25 +67,16 @@ const Admin = () => {
   useEffect(() => {
     if (isAdmin) {
       fetchAppointments();
+      fetchSettings();
     }
   }, [isAdmin]);
 
   const fetchAppointments = async () => {
     try {
-      // For now, fetch all by getting a wide range or just listing all if API supports it
-      // Our API primarily filters by date, but we want all for admin. 
-      // Let's modify API or just fetch without date to get all (need to ensure API supports this)
-      // *Correction*: The current API expects a date for filtering or returns strict slots.
-      // We should probably update API to return all if no date provided, OR just use the current date logic.
-      // Actually, let's request a special 'all' mode or just handle it.
-      // For simplicity in this quick fix, let's assume the API returns all if no date is passed or we pass a flag.
-      // Let's update the fetch call to be generic. 
-
       const response = await fetch('/api/appointments?all=true');
       if (!response.ok) throw new Error('Failed to fetch');
 
       const data = await response.json();
-      // Sort in memory since API might not sort
       const sortedData = data.sort((a: Appointment, b: Appointment) => {
         return new Date(a.tarih).getTime() - new Date(b.tarih).getTime() || a.saat.localeCompare(b.saat);
       });
@@ -77,6 +91,54 @@ const Admin = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const data = await response.json();
+      setServices(data.services || []);
+      setTimeSlots(data.timeSlots || []);
+      setBlockedSlots(data.blockedSlots || {});
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const saveSettings = async (updatedData: { services?: Service[]; timeSlots?: string[]; blockedSlots?: Record<string, string[]> }) => {
+    setSettingsSaving(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+
+      const data = await response.json();
+      setServices(data.services || []);
+      setTimeSlots(data.timeSlots || []);
+      setBlockedSlots(data.blockedSlots || {});
+
+      toast({ title: "Başarılı", description: "Ayarlar kaydedildi." });
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Hata",
+        description: "Ayarlar kaydedilirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -100,10 +162,7 @@ const Admin = () => {
         apt.id === id ? { ...apt, durum: 'onaylandi' } : apt
       ));
 
-      toast({
-        title: "Başarılı",
-        description: "Randevu onaylandı.",
-      });
+      toast({ title: "Başarılı", description: "Randevu onaylandı." });
     } catch (error) {
       console.error("Error approving appointment:", error);
       toast({
@@ -128,10 +187,7 @@ const Admin = () => {
         apt.id === id ? { ...apt, durum: 'reddedildi' } : apt
       ));
 
-      toast({
-        title: "Başarılı",
-        description: "Randevu reddedildi.",
-      });
+      toast({ title: "Başarılı", description: "Randevu reddedildi." });
     } catch (error) {
       console.error("Error rejecting appointment:", error);
       toast({
@@ -145,6 +201,65 @@ const Admin = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  // --- Service management ---
+  const updateService = (index: number, field: keyof Service, value: string | number) => {
+    const updated = [...services];
+    (updated[index] as any)[field] = value;
+    setServices(updated);
+  };
+
+  const addService = () => {
+    setServices([...services, {
+      id: `hizmet-${Date.now()}`,
+      label: "",
+      price: 0,
+      duration: "",
+      note: ""
+    }]);
+  };
+
+  const removeService = (index: number) => {
+    setServices(services.filter((_, i) => i !== index));
+  };
+
+  // --- Time slot management ---
+  const addTimeSlot = () => {
+    if (newTimeSlot && !timeSlots.includes(newTimeSlot)) {
+      const updated = [...timeSlots, newTimeSlot].sort();
+      setTimeSlots(updated);
+      setNewTimeSlot("");
+    }
+  };
+
+  const removeTimeSlot = (slot: string) => {
+    setTimeSlots(timeSlots.filter(s => s !== slot));
+  };
+
+  // --- Blocked slots management ---
+  const addBlockedSlot = () => {
+    if (blockDate && blockTimeSlot) {
+      const dateStr = format(blockDate, 'yyyy-MM-dd');
+      const updated = { ...blockedSlots };
+      if (!updated[dateStr]) {
+        updated[dateStr] = [];
+      }
+      if (!updated[dateStr].includes(blockTimeSlot)) {
+        updated[dateStr] = [...updated[dateStr], blockTimeSlot].sort();
+        setBlockedSlots(updated);
+      }
+      setBlockTimeSlot("");
+    }
+  };
+
+  const removeBlockedSlot = (dateStr: string, slot: string) => {
+    const updated = { ...blockedSlots };
+    updated[dateStr] = updated[dateStr].filter(s => s !== slot);
+    if (updated[dateStr].length === 0) {
+      delete updated[dateStr];
+    }
+    setBlockedSlots(updated);
   };
 
   const pendingAppointments = appointments.filter(apt => apt.durum === "beklemede");
@@ -232,9 +347,7 @@ const Admin = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-foreground rounded-full flex items-center justify-center">
-                <Scissors className="w-5 h-5 text-primary" />
-              </div>
+              <img src="/image.png" alt="Berber Logo" className="w-10 h-10 rounded-full object-cover" />
               <div>
                 <span className="font-display text-xl tracking-wider">BERBER</span>
                 <span className="text-xs block text-primary-foreground/70">Admin Panel</span>
@@ -291,7 +404,7 @@ const Admin = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="bekleyen" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="bekleyen" className="relative">
               Bekleyen
               {pendingAppointments.length > 0 && (
@@ -302,6 +415,10 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="onaylanan">Onaylanan</TabsTrigger>
             <TabsTrigger value="reddedilen">Reddedilen</TabsTrigger>
+            <TabsTrigger value="ayarlar" className="flex items-center gap-1">
+              <Settings className="w-4 h-4" />
+              Ayarlar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="bekleyen" className="space-y-4">
@@ -340,6 +457,242 @@ const Admin = () => {
               rejectedAppointments.map(apt => (
                 <AppointmentCard key={apt.id} appointment={apt} />
               ))
+            )}
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="ayarlar" className="space-y-8">
+            {settingsLoading ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p>Ayarlar yükleniyor...</p>
+              </div>
+            ) : (
+              <>
+                {/* Service Prices */}
+                <div className="bg-card border border-border rounded-lg p-6 shadow-soft">
+                  <h2 className="font-display text-2xl mb-6 flex items-center gap-3">
+                    <Scissors className="w-6 h-6" />
+                    HİZMET FİYATLARI
+                  </h2>
+
+                  <div className="space-y-4">
+                    {services.map((service, index) => (
+                      <div key={index} className="border border-border rounded-lg p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                          <div>
+                            <Label className="text-xs">Hizmet Adı</Label>
+                            <Input
+                              value={service.label}
+                              onChange={(e) => updateService(index, 'label', e.target.value)}
+                              placeholder="Hizmet adı"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Fiyat (₺)</Label>
+                            <Input
+                              type="number"
+                              value={service.price}
+                              onChange={(e) => updateService(index, 'price', Number(e.target.value))}
+                              placeholder="0"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Süre</Label>
+                            <Input
+                              value={service.duration}
+                              onChange={(e) => updateService(index, 'duration', e.target.value)}
+                              placeholder="~30 dk"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Not (opsiyonel)</Label>
+                            <Input
+                              value={service.note}
+                              onChange={(e) => updateService(index, 'note', e.target.value)}
+                              placeholder="Ek bilgi"
+                            />
+                          </div>
+                          <div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeService(index)}
+                              className="w-full sm:w-auto"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Sil
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button variant="outline" onClick={addService} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Yeni Hizmet Ekle
+                    </Button>
+                  </div>
+
+                  <div className="mt-6">
+                    <Button
+                      onClick={() => saveSettings({ services })}
+                      disabled={settingsSaving}
+                      className="w-full sm:w-auto"
+                    >
+                      {settingsSaving ? "Kaydediliyor..." : "Fiyatları Kaydet"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Time Slots */}
+                <div className="bg-card border border-border rounded-lg p-6 shadow-soft">
+                  <h2 className="font-display text-2xl mb-6 flex items-center gap-3">
+                    <Clock className="w-6 h-6" />
+                    RANDEVU SAATLERİ
+                  </h2>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium">Varsayılan Saat Dilimleri</Label>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {timeSlots.map((slot) => (
+                          <div key={slot} className="flex items-center gap-1 bg-secondary rounded-lg px-3 py-2">
+                            <Clock className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-sm font-medium">{slot}</span>
+                            <button
+                              onClick={() => removeTimeSlot(slot)}
+                              className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Input
+                          type="time"
+                          value={newTimeSlot}
+                          onChange={(e) => setNewTimeSlot(e.target.value)}
+                          className="w-40"
+                        />
+                        <Button variant="outline" size="sm" onClick={addTimeSlot}>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Ekle
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <Button
+                        onClick={() => saveSettings({ timeSlots })}
+                        disabled={settingsSaving}
+                        className="w-full sm:w-auto"
+                      >
+                        {settingsSaving ? "Kaydediliyor..." : "Saatleri Kaydet"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blocked Slots */}
+                <div className="bg-card border border-border rounded-lg p-6 shadow-soft">
+                  <h2 className="font-display text-2xl mb-6 flex items-center gap-3">
+                    <Ban className="w-6 h-6" />
+                    KAPATILAN SAATLER
+                  </h2>
+
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Belirli bir gün için saatleri kapatabilirsiniz. Örneğin o gün erken çıkmanız gerekiyorsa, sonraki saatleri kapatabilirsiniz.
+                  </p>
+
+                  <div className="space-y-4">
+                    {/* Add blocked slot */}
+                    <div className="flex flex-col sm:flex-row gap-3 items-end">
+                      <div>
+                        <Label className="text-xs mb-1 block">Tarih Seçin</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-[200px] justify-start text-left", !blockDate && "text-muted-foreground")}>
+                              <Calendar className="mr-2 h-4 w-4" />
+                              {blockDate ? format(blockDate, "d MMM yyyy", { locale: tr }) : "Tarih seçin"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <CalendarComponent
+                              mode="single"
+                              selected={blockDate}
+                              onSelect={setBlockDate}
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1 block">Saat</Label>
+                        <select
+                          value={blockTimeSlot}
+                          onChange={(e) => setBlockTimeSlot(e.target.value)}
+                          className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+                        >
+                          <option value="">Saat seçin</option>
+                          {timeSlots.map((slot) => (
+                            <option key={slot} value={slot}>{slot}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={addBlockedSlot} disabled={!blockDate || !blockTimeSlot}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Kapat
+                      </Button>
+                    </div>
+
+                    {/* Display blocked slots */}
+                    {Object.keys(blockedSlots).length > 0 ? (
+                      <div className="space-y-3 mt-4">
+                        {Object.entries(blockedSlots)
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([dateStr, slots]) => (
+                            <div key={dateStr} className="border border-border rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium text-sm">
+                                  {format(new Date(dateStr + 'T00:00:00'), "d MMMM yyyy", { locale: tr })}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {slots.map((slot) => (
+                                  <div key={slot} className="flex items-center gap-1 bg-destructive/10 text-destructive rounded-lg px-3 py-1.5">
+                                    <span className="text-xs font-medium">{slot}</span>
+                                    <button
+                                      onClick={() => removeBlockedSlot(dateStr, slot)}
+                                      className="ml-1 hover:text-destructive/80"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">Kapatılmış saat bulunmuyor.</p>
+                    )}
+
+                    <div className="mt-4">
+                      <Button
+                        onClick={() => saveSettings({ blockedSlots })}
+                        disabled={settingsSaving}
+                        className="w-full sm:w-auto"
+                      >
+                        {settingsSaving ? "Kaydediliyor..." : "Kapatılan Saatleri Kaydet"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </TabsContent>
         </Tabs>
