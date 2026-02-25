@@ -11,12 +11,25 @@ const AppointmentSchema = new mongoose.Schema({
     hizmet: { type: String, required: true },
     tarih: { type: String, required: true }, // Format: YYYY-MM-DD
     saat: { type: String, required: true },
+    slotlar: { type: [String], default: [] },
     durum: { type: String, default: 'beklemede' },
     created_at: { type: Date, default: Date.now }
 });
 
 // Prevent model recompilation error in dev
 const Appointment = mongoose.models.Appointment || mongoose.model('Appointment', AppointmentSchema);
+
+// Default time slots (used for slot calculation)
+const DEFAULT_TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+
+// Helper: calculate required slots from a start time and durationMinutes
+function calculateRequiredSlots(startTime: string, durationMinutes: number, timeSlots: string[]): string[] | null {
+    const slotCount = Math.ceil(durationMinutes / 60);
+    const startIndex = timeSlots.indexOf(startTime);
+    if (startIndex === -1) return null;
+    if (startIndex + slotCount > timeSlots.length) return null; // not enough slots remaining
+    return timeSlots.slice(startIndex, startIndex + slotCount);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     await connectToDatabase();
@@ -47,12 +60,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             // Get booked slots for a specific date
+            // Return all individual slots that are occupied (from slotlar array)
             const appointments = await Appointment.find({
                 tarih: date as string,
                 durum: { $ne: 'iptal' } // Don't block cancelled slots
-            }).select('saat -_id'); // Only return 'saat' field
+            }).select('saat slotlar -_id');
 
-            return res.status(200).json(appointments);
+            // Flatten all occupied slots
+            const occupiedSlots: string[] = [];
+            appointments.forEach((apt: any) => {
+                if (apt.slotlar && apt.slotlar.length > 0) {
+                    occupiedSlots.push(...apt.slotlar);
+                } else {
+                    // Backward compatibility: old appointments without slotlar
+                    occupiedSlots.push(apt.saat);
+                }
+            });
+
+            // Return unique slots as objects matching old format
+            const uniqueSlots = [...new Set(occupiedSlots)];
+            return res.status(200).json(uniqueSlots.map(s => ({ saat: s })));
         } catch (error) {
             console.error(error);
             return res.status(500).json({ error: 'Internal Server Error' });
@@ -62,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
         // Create new appointment
         try {
-            const { user_id, ad, soyad, telefon, hizmet, tarih, saat } = req.body;
+            const { user_id, ad, soyad, telefon, hizmet, tarih, saat, durationMinutes } = req.body;
 
             // Server-side date validation
             const appointmentDate = new Date(tarih + 'T00:00:00');
@@ -79,15 +106,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(400).json({ error: 'En fazla 40 gün sonrasına randevu alınabilir.' });
             }
 
-            // Check if slot is already taken
+            // Calculate required slots based on duration
+            const duration = durationMinutes || 60;
+            const requiredSlots = calculateRequiredSlots(saat, duration, DEFAULT_TIME_SLOTS);
+
+            if (!requiredSlots) {
+                return res.status(400).json({ error: 'Seçilen saat için yeterli ardışık slot bulunmamaktadır.' });
+            }
+
+            // Check if ANY of the required slots are already taken
             const existing = await Appointment.findOne({
                 tarih,
-                saat,
-                durum: { $ne: 'iptal' }
+                durum: { $ne: 'iptal' },
+                $or: [
+                    { slotlar: { $in: requiredSlots } },
+                    // Backward compatibility: check saat field for old records without slotlar
+                    { saat: { $in: requiredSlots }, slotlar: { $exists: true, $size: 0 } },
+                    { saat: { $in: requiredSlots }, slotlar: { $exists: false } }
+                ]
             });
 
             if (existing) {
-                return res.status(409).json({ error: 'Bu saat dilimi dolu.' });
+                return res.status(409).json({ error: 'Seçilen saat aralığındaki slotlardan biri veya birkaçı dolu.' });
             }
 
             const newAppointment = await Appointment.create({
@@ -97,7 +137,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 telefon,
                 hizmet,
                 tarih,
-                saat
+                saat,
+                slotlar: requiredSlots
             });
 
             return res.status(201).json(newAppointment);

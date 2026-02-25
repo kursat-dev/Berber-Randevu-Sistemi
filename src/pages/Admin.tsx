@@ -31,6 +31,7 @@ interface Service {
   label: string;
   price: number;
   duration: string;
+  durationMinutes: number;
   note: string;
 }
 
@@ -265,6 +266,7 @@ const Admin = () => {
       label: "",
       price: 0,
       duration: "",
+      durationMinutes: 60,
       note: ""
     }]);
   };
@@ -540,7 +542,7 @@ const Admin = () => {
                   <div className="space-y-4">
                     {services.map((service, index) => (
                       <div key={index} className="border border-border rounded-lg p-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
                           <div>
                             <Label className="text-xs">Hizmet Adı</Label>
                             <Input
@@ -559,11 +561,22 @@ const Admin = () => {
                             />
                           </div>
                           <div>
-                            <Label className="text-xs">Süre</Label>
+                            <Label className="text-xs">Süre (gösterim)</Label>
                             <Input
                               value={service.duration}
                               onChange={(e) => updateService(index, 'duration', e.target.value)}
                               placeholder="~30 dk"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Süre (dk)</Label>
+                            <Input
+                              type="number"
+                              value={service.durationMinutes || 60}
+                              onChange={(e) => updateService(index, 'durationMinutes', Number(e.target.value))}
+                              placeholder="60"
+                              min={60}
+                              step={60}
                             />
                           </div>
                           <div>

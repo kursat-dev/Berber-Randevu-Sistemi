@@ -18,6 +18,7 @@ interface Service {
   label: string;
   price: number;
   duration: string;
+  durationMinutes: number;
   note?: string;
 }
 
@@ -105,9 +106,37 @@ const Randevu = () => {
   };
 
   const dateBlockedSlots = getBlockedSlotsForDate(formData.tarih);
+  const selectedService = serviceTypes.find(s => s.id === formData.hizmet);
+  const unavailableSlots = [...bookedSlots, ...dateBlockedSlots];
   const availableTimeSlots = allTimeSlots.filter(
-    slot => !bookedSlots.includes(slot) && !dateBlockedSlots.includes(slot)
+    slot => !unavailableSlots.includes(slot)
   );
+
+  // Calculate how many consecutive slots the selected service needs
+  const selectedServiceDuration = selectedService?.durationMinutes || 60;
+  const requiredSlotCount = Math.ceil(selectedServiceDuration / 60);
+
+  // Helper: check if a slot can be selected (enough consecutive free slots from this position)
+  const canSelectSlot = (time: string): boolean => {
+    const startIndex = allTimeSlots.indexOf(time);
+    if (startIndex === -1) return false;
+    if (startIndex + requiredSlotCount > allTimeSlots.length) return false;
+    for (let i = 0; i < requiredSlotCount; i++) {
+      const slot = allTimeSlots[startIndex + i];
+      if (unavailableSlots.includes(slot)) return false;
+    }
+    return true;
+  };
+
+  // Helper: get all slots that would be covered if a given slot is selected
+  const getCoveredSlots = (time: string): string[] => {
+    const startIndex = allTimeSlots.indexOf(time);
+    if (startIndex === -1) return [];
+    return allTimeSlots.slice(startIndex, startIndex + requiredSlotCount);
+  };
+
+  // The slots covered by the currently selected time
+  const selectedCoveredSlots = formData.saat ? getCoveredSlots(formData.saat) : [];
 
   const handleSubmit = async () => {
     // Validate all fields
@@ -136,6 +165,7 @@ const Randevu = () => {
           hizmet: formData.hizmet,
           tarih: format(formData.tarih, 'yyyy-MM-dd'),
           saat: formData.saat,
+          durationMinutes: selectedServiceDuration,
         }),
       });
 
@@ -169,7 +199,6 @@ const Randevu = () => {
     }
   };
 
-  const selectedService = serviceTypes.find(s => s.id === formData.hizmet);
 
   if (isSuccess) {
     return (
@@ -209,7 +238,12 @@ const Randevu = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Saat:</span>
-                  <span className="font-medium">{formData.saat}</span>
+                  <span className="font-medium">
+                    {requiredSlotCount > 1 && selectedCoveredSlots.length > 0
+                      ? `${formData.saat} - ${(parseInt(selectedCoveredSlots[selectedCoveredSlots.length - 1]) + 1).toString().padStart(2, '0') + ':00'}`
+                      : formData.saat
+                    }
+                  </span>
                 </div>
               </div>
             </div>
@@ -348,7 +382,7 @@ const Randevu = () => {
                       {serviceTypes.map((service) => (
                         <button
                           key={service.id}
-                          onClick={() => setFormData({ ...formData, hizmet: service.id })}
+                          onClick={() => setFormData({ ...formData, hizmet: service.id, saat: "" })}
                           className={cn(
                             "w-full p-4 rounded-lg border-2 text-left transition-all",
                             formData.hizmet === service.id
@@ -449,19 +483,27 @@ const Randevu = () => {
                               {allTimeSlots.map((time) => {
                                 const isBooked = bookedSlots.includes(time);
                                 const isBlocked = dateBlockedSlots.includes(time);
-                                const isUnavailable = isBooked || isBlocked;
+                                const isSlotUnavailable = isBooked || isBlocked;
+                                const canSelect = !isSlotUnavailable && canSelectSlot(time);
+                                const isSelected = formData.saat === time;
+                                const isCovered = selectedCoveredSlots.includes(time) && !isSelected;
+                                const isDisabled = isSlotUnavailable || !canSelect;
                                 return (
                                   <button
                                     key={time}
-                                    onClick={() => !isUnavailable && setFormData({ ...formData, saat: time })}
-                                    disabled={isUnavailable}
+                                    onClick={() => canSelect && setFormData({ ...formData, saat: time })}
+                                    disabled={isDisabled}
                                     className={cn(
                                       "p-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-center gap-1",
-                                      isUnavailable
+                                      isSlotUnavailable
                                         ? "border-border bg-muted text-muted-foreground cursor-not-allowed line-through"
-                                        : formData.saat === time
-                                          ? "border-primary bg-primary text-primary-foreground"
-                                          : "border-border hover:border-primary/50"
+                                        : !canSelect
+                                          ? "border-border bg-muted/50 text-muted-foreground cursor-not-allowed"
+                                          : isSelected
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : isCovered
+                                              ? "border-primary/70 bg-primary/20 text-primary"
+                                              : "border-border hover:border-primary/50"
                                     )}
                                   >
                                     <Clock className="w-3 h-3" />
@@ -501,8 +543,19 @@ const Randevu = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Saat:</span>
-                          <span>{formData.saat}</span>
+                          <span>
+                            {requiredSlotCount > 1
+                              ? `${formData.saat} - ${selectedCoveredSlots[selectedCoveredSlots.length - 1] ? (parseInt(selectedCoveredSlots[selectedCoveredSlots.length - 1]) + 1).toString().padStart(2, '0') + ':00' : formData.saat}`
+                              : formData.saat
+                            }
+                          </span>
                         </div>
+                        {requiredSlotCount > 1 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Süre:</span>
+                            <span>{selectedService?.duration}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

@@ -5,6 +5,7 @@ const ServiceSchema = new mongoose.Schema({
     label: { type: String, required: true },
     price: { type: Number, required: true },
     duration: { type: String, required: true },
+    durationMinutes: { type: Number, required: true, default: 60 },
     note: { type: String, default: '' }
 }, { _id: false });
 
@@ -14,11 +15,11 @@ const SettingsSchema = new mongoose.Schema({
     services: {
         type: [ServiceSchema],
         default: [
-            { id: 'sac-kesimi', label: 'Saç Kesimi', price: 200, duration: '~30 dk', note: '' },
-            { id: 'sac-kesme-yikama', label: 'Saç Kesme + Yıkama', price: 300, duration: '~45 dk', note: '' },
-            { id: 'sac-sakal-yikama', label: 'Saç-Sakal Kesme + Yıkama', price: 400, duration: '~1 saat', note: '' },
-            { id: 'sac-boyama', label: 'Saç Boyama', price: 1000, duration: '~2 saat', note: 'Rengine göre değişiklik gösterir' },
-            { id: 'perma', label: 'Perma', price: 4000, duration: '~3 saat', note: '' }
+            { id: 'sac-kesimi', label: 'Saç Kesimi', price: 200, duration: '~30 dk', durationMinutes: 60, note: '' },
+            { id: 'sac-kesme-yikama', label: 'Saç Kesme + Yıkama', price: 300, duration: '~45 dk', durationMinutes: 60, note: '' },
+            { id: 'sac-sakal-yikama', label: 'Saç-Sakal Kesme + Yıkama', price: 400, duration: '~1 saat', durationMinutes: 60, note: '' },
+            { id: 'sac-boyama', label: 'Saç Boyama', price: 1000, duration: '~2 saat', durationMinutes: 120, note: 'Rengine göre değişiklik gösterir' },
+            { id: 'perma', label: 'Perma', price: 4000, duration: '~3 saat', durationMinutes: 180, note: '' }
         ]
     },
     timeSlots: {
