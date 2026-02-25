@@ -48,9 +48,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
         try {
-            const settings = await getSettings();
+            const settingsDoc = await getSettings();
+            const settings = settingsDoc.toObject ? settingsDoc.toObject() : settingsDoc;
+
+            // Ensure older database records have durationMinutes
+            const services = settings.services.map((s: any) => {
+                if (s.durationMinutes === undefined || s.durationMinutes === null) {
+                    if (s.id === 'perma') s.durationMinutes = 180;
+                    else if (s.id === 'sac-boyama') s.durationMinutes = 120;
+                    else s.durationMinutes = 60;
+                }
+                return s;
+            });
+
             return res.status(200).json({
-                services: settings.services,
+                services: services,
                 timeSlots: settings.timeSlots,
                 blockedSlots: settings.blockedSlots
             });
