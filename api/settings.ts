@@ -14,6 +14,35 @@ async function getSettings() {
     return settings;
 }
 
+// Helper to verify admin token
+function verifyAdmin(req: VercelRequest): { valid: boolean; error?: string } {
+    try {
+        const authHeader = req.headers.authorization;
+        console.log('Auth header present:', !!authHeader);
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return { valid: false, error: 'No valid authorization header' };
+        }
+
+        const token = authHeader.split(' ')[1];
+        if (!token || token === 'null' || token === 'undefined') {
+            return { valid: false, error: 'Token is empty or null' };
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string; role: string };
+        console.log('Token decoded, role:', decoded.role, 'email:', decoded.email);
+
+        if (decoded.role !== 'admin') {
+            return { valid: false, error: 'User is not admin' };
+        }
+
+        return { valid: true };
+    } catch (error: any) {
+        console.error('Token verification error:', error.name, error.message);
+        return { valid: false, error: `Token error: ${error.name} - ${error.message}` };
+    }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     await connectToDatabase();
 
@@ -32,20 +61,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (req.method === 'PUT') {
+        // Verify admin token
+        const auth = verifyAdmin(req);
+        if (!auth.valid) {
+            console.error('Settings PUT auth failed:', auth.error);
+            return res.status(401).json({ error: auth.error || 'Unauthorized' });
+        }
+
         try {
-            // Verify admin token
-            const authHeader = req.headers.authorization;
-            if (!authHeader || !authHeader.startsWith('Bearer ')) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-
-            const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, JWT_SECRET) as { role: string };
-
-            if (decoded.role !== 'admin') {
-                return res.status(403).json({ error: 'Forbidden - Admin only' });
-            }
-
             const { services, timeSlots, blockedSlots } = req.body;
 
             const updateData: any = { updated_at: new Date() };
@@ -64,10 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 timeSlots: settings.timeSlots,
                 blockedSlots: settings.blockedSlots
             });
-        } catch (error: any) {
-            if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-                return res.status(401).json({ error: 'Invalid or expired token' });
-            }
+        } catch (error) {
             console.error('Error updating settings:', error);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
