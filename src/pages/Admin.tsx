@@ -113,6 +113,15 @@ const Admin = () => {
     setSettingsSaving(true);
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        toast({
+          title: "Hata",
+          description: "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.",
+          variant: "destructive",
+        });
+        setSettingsSaving(false);
+        return;
+      }
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
@@ -122,7 +131,11 @@ const Admin = () => {
         body: JSON.stringify(updatedData),
       });
 
-      if (!response.ok) throw new Error('Failed to save');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('Settings save error:', response.status, errData);
+        throw new Error(errData.error || `Sunucu hatası: ${response.status}`);
+      }
 
       const data = await response.json();
       setServices(data.services || []);
@@ -130,11 +143,11 @@ const Admin = () => {
       setBlockedSlots(data.blockedSlots || {});
 
       toast({ title: "Başarılı", description: "Ayarlar kaydedildi." });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving settings:", error);
       toast({
         title: "Hata",
-        description: "Ayarlar kaydedilirken bir hata oluştu.",
+        description: error.message || "Ayarlar kaydedilirken bir hata oluştu.",
         variant: "destructive",
       });
     } finally {
@@ -193,6 +206,28 @@ const Admin = () => {
       toast({
         title: "Hata",
         description: "Randevu reddedilirken bir hata oluştu.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Bu randevuyu silmek istediğinize emin misiniz?")) return;
+    try {
+      const response = await fetch(`/api/appointments?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete');
+
+      setAppointments(appointments.filter(apt => apt.id !== id));
+
+      toast({ title: "Başarılı", description: "Randevu silindi." });
+    } catch (error) {
+      console.error("Error deleting appointment:", error);
+      toast({
+        title: "Hata",
+        description: "Randevu silinirken bir hata oluştu.",
         variant: "destructive",
       });
     }
@@ -263,7 +298,9 @@ const Admin = () => {
   };
 
   const pendingAppointments = appointments.filter(apt => apt.durum === "beklemede");
-  const approvedAppointments = appointments.filter(apt => apt.durum === "onaylandi");
+  const approvedAppointments = appointments
+    .filter(apt => apt.durum === "onaylandi")
+    .sort((a, b) => new Date(a.tarih).getTime() - new Date(b.tarih).getTime() || a.saat.localeCompare(b.saat));
   const rejectedAppointments = appointments.filter(apt => apt.durum === "reddedildi");
 
   if (isLoading || loading) {
@@ -332,9 +369,19 @@ const Admin = () => {
             </Button>
           </div>
         ) : (
-          <Badge variant={appointment.durum === "onaylandi" ? "default" : "destructive"}>
-            {appointment.durum === "onaylandi" ? "Onaylandı" : "Reddedildi"}
-          </Badge>
+          <div className="flex items-center gap-2 sm:flex-col">
+            <Badge variant={appointment.durum === "onaylandi" ? "default" : "destructive"}>
+              {appointment.durum === "onaylandi" ? "Onaylandı" : "Reddedildi"}
+            </Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleDelete(appointment.id)}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         )}
       </div>
     </div>
