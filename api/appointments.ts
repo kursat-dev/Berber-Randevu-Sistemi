@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
         const { date, all } = req.query;
-        
+
         console.log('GET /api/appointments - Query params:', { date, all, query: req.query });
 
         try {
@@ -64,6 +64,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
             const { user_id, ad, soyad, telefon, hizmet, tarih, saat } = req.body;
 
+            // Server-side date validation
+            const appointmentDate = new Date(tarih + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const maxDate = new Date(today);
+            maxDate.setDate(maxDate.getDate() + 40);
+
+            if (appointmentDate < today) {
+                return res.status(400).json({ error: 'Geçmiş tarihe randevu alınamaz.' });
+            }
+
+            if (appointmentDate > maxDate) {
+                return res.status(400).json({ error: 'En fazla 40 gün sonrasına randevu alınabilir.' });
+            }
+
             // Check if slot is already taken
             const existing = await Appointment.findOne({
                 tarih,
@@ -100,8 +115,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return res.status(400).json({ error: 'Missing id or durum' });
             }
 
-            await connectToDatabase();
-
             const updatedAppointment = await Appointment.findByIdAndUpdate(
                 id,
                 { durum },
@@ -115,6 +128,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json(updatedAppointment);
         } catch (error) {
             console.error('Error updating appointment:', error);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
+
+    if (req.method === 'DELETE') {
+        try {
+            const { id } = req.query;
+
+            if (!id) {
+                return res.status(400).json({ error: 'Missing appointment id' });
+            }
+
+            const deleted = await Appointment.findByIdAndDelete(id as string);
+
+            if (!deleted) {
+                return res.status(404).json({ error: 'Appointment not found' });
+            }
+
+            return res.status(200).json({ success: true, message: 'Randevu silindi.' });
+        } catch (error) {
+            console.error('Error deleting appointment:', error);
             return res.status(500).json({ error: 'Internal Server Error' });
         }
     }
