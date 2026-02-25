@@ -424,7 +424,7 @@ const Randevu = () => {
                               onSelect={(date) => {
                                 setFormData({ ...formData, tarih: date, saat: "" });
                               }}
-                              disabled={(date) => isBefore(date, startOfToday()) || isBefore(addDays(new Date(), 30), date)}
+                              disabled={(date) => isBefore(date, startOfToday()) || isBefore(addDays(new Date(), 40), date)}
                               initialFocus
                               className="pointer-events-auto"
                             />
