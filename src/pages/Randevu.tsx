@@ -497,12 +497,12 @@ const Randevu = () => {
                                       "p-3 rounded-lg border text-sm font-medium transition-all flex items-center justify-center gap-1",
                                       isSlotUnavailable
                                         ? "border-border bg-muted text-muted-foreground cursor-not-allowed line-through"
-                                        : !canSelect
-                                          ? "border-border bg-muted/50 text-muted-foreground cursor-not-allowed"
-                                          : isSelected
-                                            ? "border-primary bg-primary text-primary-foreground"
-                                            : isCovered
-                                              ? "border-primary/70 bg-primary/20 text-primary"
+                                        : isSelected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : isCovered
+                                            ? "border-primary/50 bg-primary/10 text-primary cursor-default"
+                                            : !canSelect
+                                              ? "border-border bg-transparent text-muted-foreground/50 opacity-60 cursor-not-allowed"
                                               : "border-border hover:border-primary/50"
                                     )}
                                   >
