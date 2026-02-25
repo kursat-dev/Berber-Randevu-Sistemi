@@ -66,6 +66,38 @@ const Randevu = () => {
       }));
     }
   }, [user]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+
+    if (!val) {
+      setFormData({ ...formData, telefon: '' });
+      return;
+    }
+
+    val = val.replace(/\D/g, '');
+
+    if (val.length > 0 && !val.startsWith('90')) {
+      if (val.startsWith('0')) {
+        val = '9' + val;
+      } else if (val.startsWith('5')) {
+        val = '90' + val;
+      } else {
+        val = '90' + val;
+      }
+    }
+
+    let formatted = '';
+    if (val.length > 0) {
+      formatted = '+90';
+      if (val.length > 2) formatted += ' ' + val.substring(2, 5);
+      if (val.length > 5) formatted += ' ' + val.substring(5, 8);
+      if (val.length > 8) formatted += ' ' + val.substring(8, 10);
+      if (val.length > 10) formatted += ' ' + val.substring(10, 12);
+    }
+
+    setFormData({ ...formData, telefon: formatted });
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
@@ -348,10 +380,11 @@ const Randevu = () => {
                           <Input
                             id="telefon"
                             type="tel"
-                            placeholder="05XX XXX XX XX"
+                            placeholder="+90 5XX XXX XX XX"
                             className="pl-10"
                             value={formData.telefon}
-                            onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                            onChange={handlePhoneChange}
+                            maxLength={17}
                           />
                         </div>
                       </div>
@@ -458,7 +491,7 @@ const Randevu = () => {
                               onSelect={(date) => {
                                 setFormData({ ...formData, tarih: date, saat: "" });
                               }}
-                              disabled={(date) => isBefore(date, startOfToday()) || isBefore(addDays(new Date(), 40), date)}
+                              disabled={(date) => isBefore(date, startOfToday()) || isBefore(addDays(new Date(), 40), date) || date.getDay() === 0}
                               initialFocus
                               className="pointer-events-auto"
                             />
