@@ -115,11 +115,12 @@ const Admin = () => {
       const token = localStorage.getItem("token");
       if (!token) {
         toast({
-          title: "Hata",
-          description: "Oturum süresi dolmuş. Lütfen tekrar giriş yapın.",
+          title: "Oturum Süresi Doldu",
+          description: "Tekrar giriş yapılıyor...",
           variant: "destructive",
         });
-        setSettingsSaving(false);
+        await signOut();
+        navigate("/giris");
         return;
       }
       const response = await fetch('/api/settings', {
@@ -134,6 +135,19 @@ const Admin = () => {
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         console.error('Settings save error:', response.status, errData);
+
+        // Token expired or invalid — auto sign out and redirect
+        if (response.status === 401) {
+          toast({
+            title: "Oturum Süresi Doldu",
+            description: "Lütfen tekrar giriş yapın.",
+            variant: "destructive",
+          });
+          await signOut();
+          navigate("/giris");
+          return;
+        }
+
         throw new Error(errData.error || `Sunucu hatası: ${response.status}`);
       }
 
