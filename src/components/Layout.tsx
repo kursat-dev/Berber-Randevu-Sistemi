@@ -38,7 +38,7 @@ const Layout = ({ children }: LayoutProps) => {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group">
               <img src="/image.png" alt="Berber Logo" className="w-10 h-10 rounded-full object-cover transition-transform group-hover:scale-105" />
-              <span className="font-display text-2xl tracking-wider">BERBER</span>
+              <span className="font-display text-2xl tracking-wider">Alperen Sandıkçı</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -183,7 +183,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <img src="/image.png" alt="Berber Logo" className="w-10 h-10 rounded-full object-cover" />
-                <span className="font-display text-2xl tracking-wider">BERBER</span>
+                <span className="font-display text-2xl tracking-wider">Alperen Sandıkçı</span>
               </div>
               <p className="text-primary-foreground/70 text-sm">
                 Profesyonel berberlik hizmetleri ile stilinizi tamamlayın.
@@ -224,7 +224,7 @@ const Layout = ({ children }: LayoutProps) => {
 
           <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center">
             <p className="text-sm text-primary-foreground/60">
-              © 2025 Berber. Tüm hakları saklıdır.
+              © 2026 Berber. Tüm hakları saklıdır.
             </p>
           </div>
         </div>

@@ -9,8 +9,8 @@ Vercel dashboard'da şu environment variable'ları ekleyin:
 - `JWT_SECRET` - JWT token için secret key (güçlü bir string kullanın)
 
 ### Optional (Admin User için):
-- `ADMIN_EMAIL` - Admin kullanıcı email'i (default: admin@berber.com)
-- `ADMIN_PASSWORD` - Admin kullanıcı şifresi (default: admin123)
+- `ADMIN_EMAIL` - Admin kullanıcı email'i 
+- `ADMIN_PASSWORD` - Admin kullanıcı şifresi
 
 ## 2. Build Settings
 
