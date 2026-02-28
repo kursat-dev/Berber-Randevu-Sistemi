@@ -125,8 +125,8 @@ Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyi
 
 ### 2. Repoyu Klonlayın
 ```bash
-git clone <REPO_URL>
-cd berber-randevu-sistemi
+git clone https://github.com/kursat-dev/Berber-Randevu-Sistemi
+cd Berber-Randevu-Sistemi
 ```
 
 ### 3. Bağımlılıkları Yükleyin
