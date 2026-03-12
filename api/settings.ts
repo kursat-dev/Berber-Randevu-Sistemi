@@ -44,11 +44,13 @@ function verifyAdmin(req: VercelRequest): { valid: boolean; error?: string } {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    console.log(`Settings API called: ${req.method} ${req.url}`);
     await connectToDatabase();
 
     if (req.method === 'GET') {
         try {
             const settingsDoc = await getSettings();
+            console.log('Settings doc retrieved:', JSON.stringify(settingsDoc, null, 2));
             const settings = settingsDoc.toObject ? settingsDoc.toObject() : settingsDoc;
 
             // Ensure older database records have durationMinutes
@@ -64,7 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json({
                 services: services,
                 timeSlots: settings.timeSlots,
-                blockedSlots: settings.blockedSlots
+                blockedSlots: settings.blockedSlots,
+                address: settings.address
             });
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -81,12 +84,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         try {
-            const { services, timeSlots, blockedSlots } = req.body;
+            const { services, timeSlots, blockedSlots, address } = req.body;
 
             const updateData: any = { updated_at: new Date() };
             if (services !== undefined) updateData.services = services;
             if (timeSlots !== undefined) updateData.timeSlots = timeSlots;
             if (blockedSlots !== undefined) updateData.blockedSlots = blockedSlots;
+            if (address !== undefined) updateData.address = address;
 
             const settings = await Settings.findOneAndUpdate(
                 { key: 'main' },
@@ -97,7 +101,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json({
                 services: settings.services,
                 timeSlots: settings.timeSlots,
-                blockedSlots: settings.blockedSlots
+                blockedSlots: settings.blockedSlots,
+                address: settings.address
             });
         } catch (error) {
             console.error('Error updating settings:', error);

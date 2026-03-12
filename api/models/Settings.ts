@@ -32,6 +32,10 @@ const SettingsSchema = new mongoose.Schema({
         of: [String],
         default: {}
     },
+    address: {
+        type: String,
+        default: 'Trabzon Akçaabat Belediye Binası Yanı,\nKolotoğlu Ahmet Usta Karşısı,\nKofoğlu İş Hanı'
+    },
     updated_at: { type: Date, default: Date.now }
 });
 

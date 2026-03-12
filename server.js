@@ -1,9 +1,6 @@
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config({ path: '.env.local' });
 
 const app = express();
 const PORT = 3000;
@@ -16,11 +13,12 @@ app.use(express.urlencoded({ extended: true })); // For query parameters
 import registerHandler from './api/auth/register.ts';
 import loginHandler from './api/auth/login.ts';
 import appointmentsHandler from './api/appointments.ts';
+import settingsHandler from './api/settings.ts';
 
 // Helper to convert Express req/res to Vercel format
-const toVercelHandler = (handler) => (req, res) => {
+const toVercelHandler = (handler) => async (req, res) => {
   // Debug log
-  console.log('Request:', req.method, req.url, 'Query:', req.query);
+  console.log(`[${new Date().toISOString()}] Incoming ${req.method} ${req.url}`);
   
   const vercelReq = {
     method: req.method,
@@ -36,11 +34,17 @@ const toVercelHandler = (handler) => (req, res) => {
       return vercelRes;
     },
     json: (data) => {
+      console.log(`[${new Date().toISOString()}] Sending JSON response for ${req.url}`);
       res.json(data);
     },
   };
   
-  handler(vercelReq, vercelRes);
+  try {
+    await handler(vercelReq, vercelRes);
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] Error in handler ${req.url}:`, err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 };
 
 // API Routes
@@ -49,6 +53,8 @@ app.post('/api/auth/login', toVercelHandler(loginHandler));
 app.get('/api/appointments', toVercelHandler(appointmentsHandler));
 app.post('/api/appointments', toVercelHandler(appointmentsHandler));
 app.put('/api/appointments', toVercelHandler(appointmentsHandler));
+app.get('/api/settings', toVercelHandler(settingsHandler));
+app.put('/api/settings', toVercelHandler(settingsHandler));
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);

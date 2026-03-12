@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Scissors, Phone, MapPin, Menu, X, User, LogOut, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -21,6 +21,24 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, signOut } = useAuth();
+  const [address, setAddress] = useState("Trabzon Akçaabat Belediye Binası Yanı,\nKolotoğlu Ahmet Usta Karşısı,\nKofoğlu İş Hanı");
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.address) {
+            setAddress(data.address);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching address:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -199,8 +217,8 @@ const Layout = ({ children }: LayoutProps) => {
                   <span className="text-sm">+90 505 745 82 51</span>
                 </a>
                 <div className="flex items-start gap-3 text-primary-foreground/80">
-                  <MapPin className="w-4 h-4 mt-0.5" />
-                  <span className="text-sm">Trabzon Akçaabat Belediye Binası Yanı,<br />Kolotoğlu Ahmet Usta Karşısı,<br />Kofoğlu İş Hanı</span>
+                  <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span className="text-sm whitespace-pre-line">{address}</span>
                 </div>
               </div>
             </div>

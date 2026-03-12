@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, User, Phone, Check, X, LogOut, Scissors, RefreshCw, Settings, Plus, Trash2, Ban } from "lucide-react";
+import { Calendar, Clock, User, Phone, Check, X, LogOut, Scissors, RefreshCw, Settings, Plus, Trash2, Ban, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +47,7 @@ const Admin = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [blockedSlots, setBlockedSlots] = useState<Record<string, string[]>>({});
+  const [address, setAddress] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [newTimeSlot, setNewTimeSlot] = useState("");
@@ -103,6 +104,7 @@ const Admin = () => {
       setServices(data.services || []);
       setTimeSlots(data.timeSlots || []);
       setBlockedSlots(data.blockedSlots || {});
+      setAddress(data.address || "");
     } catch (error) {
       console.error("Error fetching settings:", error);
     } finally {
@@ -110,7 +112,7 @@ const Admin = () => {
     }
   };
 
-  const saveSettings = async (updatedData: { services?: Service[]; timeSlots?: string[]; blockedSlots?: Record<string, string[]> }) => {
+  const saveSettings = async (updatedData: { services?: Service[]; timeSlots?: string[]; blockedSlots?: Record<string, string[]>; address?: string }) => {
     setSettingsSaving(true);
     try {
       const token = localStorage.getItem("token");
@@ -156,6 +158,7 @@ const Admin = () => {
       setServices(data.services || []);
       setTimeSlots(data.timeSlots || []);
       setBlockedSlots(data.blockedSlots || {});
+      if (data.address !== undefined) setAddress(data.address);
 
       toast({ title: "Başarılı", description: "Ayarlar kaydedildi." });
     } catch (error: any) {
@@ -532,6 +535,34 @@ const Admin = () => {
               </div>
             ) : (
               <>
+                {/* Contact Info (Address) */}
+                <div className="bg-card border border-border rounded-lg p-6 shadow-soft mb-8">
+                  <h2 className="font-display text-2xl mb-6 flex items-center gap-3">
+                    <MapPin className="w-6 h-6" />
+                    İLETİŞİM BİLGİLERİ
+                  </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium">Salon Adresi</Label>
+                      <textarea
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="w-full min-h-[100px] p-3 rounded-md border border-input bg-background text-sm"
+                        placeholder="Salon adresini buraya girin (her satır alt alta görünür)"
+                      />
+                    </div>
+                    <div>
+                      <Button
+                        onClick={() => saveSettings({ address })}
+                        disabled={settingsSaving}
+                        className="w-full sm:w-auto"
+                      >
+                        {settingsSaving ? "Kaydediliyor..." : "Adresi Kaydet"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Service Prices */}
                 <div className="bg-card border border-border rounded-lg p-6 shadow-soft">
                   <h2 className="font-display text-2xl mb-6 flex items-center gap-3">
