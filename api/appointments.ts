@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import connectToDatabase from './db.js';
+import Settings from './models/Settings.js';
 
 // Define Schema
 const AppointmentSchema = new mongoose.Schema({
@@ -108,7 +109,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             // Calculate required slots based on duration
             const duration = durationMinutes || 60;
-            const requiredSlots = calculateRequiredSlots(saat, duration, DEFAULT_TIME_SLOTS);
+
+            // Fetch actual time slots from settings (admin may have added slots beyond the default range)
+            const settingsDoc = await Settings.findOne({ key: 'main' });
+            const actualTimeSlots = settingsDoc?.timeSlots?.length ? settingsDoc.timeSlots : DEFAULT_TIME_SLOTS;
+            const requiredSlots = calculateRequiredSlots(saat, duration, actualTimeSlots);
 
             if (!requiredSlots) {
                 return res.status(400).json({ error: 'Seçilen saat için yeterli ardışık slot bulunmamaktadır.' });
