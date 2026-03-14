@@ -2,26 +2,35 @@
 
 Modern ve şık bir berber randevu yönetim sistemi. Müşterilerin kolayca randevu almasını sağlarken, işletme sahiplerine tüm süreci yönetebilecekleri güçlü bir yönetim paneli sunar.
 
+🔗 **Canlı Demo:** [asrandevu.com.tr](https://asrandevu.com.tr)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?logo=tailwindcss&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-Headless-47A248?logo=mongodb&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white)
 
 ---
 
 ## 🚀 Özellikler
 
 ### 👤 Müşteriler İçin
-- **Kolay Randevu Alma**: Kullanıcı dostu arayüz ile tarih ve saat seçimi.
-- **Hizmet Seçimi**: Farklı berber hizmetleri arasından seçim yapabilme.
-- **Dolu Saat Kontrolü**: Seçilen tarihteki dolu saatleri otomatik görme.
+- **Kolay Randevu Alma**: 3 adımlı kullanıcı dostu arayüz ile bilgi girişi, hizmet seçimi, tarih ve saat seçimi.
+- **Hizmet Seçimi**: Farklı berber hizmetleri arasından seçim yapabilme (fiyat ve süre bilgisiyle).
+- **Çoklu Slot Desteği**: Uzun süreli hizmetler (boyama, perma vb.) otomatik olarak ardışık slot hesaplaması yapar.
+- **Dolu Saat Kontrolü**: Seçilen tarihteki dolu ve bloklu saatleri otomatik görme.
+- **Kullanıcı Kayıt/Giriş**: Hesap oluşturma ve giriş yaparak bilgilerin otomatik doldurulması.
 - **Responsive Tasarım**: Mobil ve masaüstü cihazlarda kusursuz deneyim.
 
 ### 🛡️ Yönetim Paneli (Admin)
-- **Randevu Takibi**: Tüm randevuları listeleyebilme ve filtreleme.
+- **Randevu Takibi**: Tüm randevuları listeleyebilme, tarihe göre filtreleme.
 - **Durum Güncelleme**: Randevuları onaylama, iptal etme veya tamamlama.
+- **Hizmet Yönetimi**: Hizmet ekleme, düzenleme, silme (isim, fiyat, süre, not).
+- **Saat Dilimi Yönetimi**: Çalışma saatlerini dinamik olarak ekleme/kaldırma.
+- **Slot Bloklama**: Belirli tarihlere özel saat dilimleri bloklayabilme.
+- **Adres Yönetimi**: İşletme adresini yönetim panelinden düzenleyebilme.
 - **Güvenli Giriş**: JWT tabanlı yönetici kimlik doğrulaması.
 
 ---
@@ -37,12 +46,13 @@ graph TD
         UI[React UI]
         Router[React Router]
         State[React Hooks / State]
+        AuthCtx[Auth Context]
     end
 
     subgraph Server ["Serverless Backend (Vercel)"]
-        API[Express App / API Routes]
-        Auth[Auth Controller]
-        Apt[Appointment Controller]
+        AuthAPI[Auth API - login/register]
+        AptAPI[Appointments API]
+        SetAPI[Settings API]
     end
 
     subgraph Database ["Data Storage"]
@@ -50,14 +60,15 @@ graph TD
     end
 
     User((User)) -->|Interacts| UI
-    UI -->|Navigates| Router
-    UI -->|HTTP Requests| API
+    UI --> Router
+    UI -->|Auth State| AuthCtx
+    UI -->|HTTP Requests| AuthAPI
+    UI -->|HTTP Requests| AptAPI
+    UI -->|HTTP Requests| SetAPI
     
-    API -->|Validate| Auth
-    API -->|CRUD Ops| Apt
-    
-    Apt -->|Query/Update| Mongo
-    Auth -->|User Check| Mongo
+    AuthAPI -->|JWT Verify| Mongo
+    AptAPI -->|CRUD Ops| Mongo
+    SetAPI -->|Settings CRUD| Mongo
 ```
 
 ### Randevu Oluşturma Akışı
@@ -67,34 +78,42 @@ Kullanıcının randevu alma sürecindeki veri akışı ve çakışma kontrolü 
 sequenceDiagram
     participant U as Kullanıcı
     participant FE as Frontend (React)
-    participant API as API (Express)
+    participant API as API (Serverless)
     participant DB as MongoDB
+
+    Note over U, FE: Ayarlar Yükleme
+    FE->>API: GET /api/settings
+    API->>DB: Settings.findOne({ key: 'main' })
+    DB-->>API: Hizmetler, Saatler, Bloklu Slotlar
+    API-->>FE: { services, timeSlots, blockedSlots }
 
     Note over U, FE: Tarih Seçimi
     U->>FE: Bir tarih seçer
     FE->>API: GET /api/appointments?date=YYYY-MM-DD
     API->>DB: find({ tarih: date, durum: !=iptal })
     DB-->>API: Dolu Saatleri Döndür
-    API-->>FE: [10:00, 14:30, ...]
+    API-->>FE: [{ saat: "10:00" }, ...]
     FE->>U: Dolu saatleri pasif göster
 
     Note over U, FE: Randevu Onayı
     U->>FE: Saat ve Hizmet Seçer -> "Randevu Al"
-    FE->>API: POST /api/appointments
+    FE->>API: POST /api/appointments { saat, durationMinutes, ... }
     
     rect rgb(240, 240, 240)
         Note right of API: Çakışma Kontrolü (Critical Section)
-        API->>DB: findOne({ tarih, saat, durum: !=iptal })
-        alt Saat doluysa
+        API->>DB: Settings - dinamik zaman dilimlerini al
+        API->>API: calculateRequiredSlots(saat, duration, slots)
+        API->>DB: findOne({ tarih, slotlar: $in, durum: !=iptal })
+        alt Slotlardan biri doluysa
             DB-->>API: Kayıt bulundu
-            API-->>FE: 409 Conflict "Saat Dolu"
+            API-->>FE: 409 Conflict "Slot Dolu"
             FE-->>U: Hata Mesajı Göster
-        else Saat boşsa
+        else Tüm slotlar boşsa
             DB-->>API: null
-            API->>DB: create({ ...details })
+            API->>DB: create({ ...details, slotlar })
             DB-->>API: Yeni Kayıt
             API-->>FE: 201 Created
-            FE-->>U: Başarılı Mesajı & Yönlendirme
+            FE-->>U: Başarılı Mesajı
         end
     end
 ```
@@ -105,13 +124,30 @@ sequenceDiagram
 
 | Alan | Teknoloji | Açıklama |
 |------|-----------|----------|
-| **Frontend** | React, TypeScript | Tip güvenli UI geliştirme |
-| **Build Tool** | Vite | Hızlı geliştirme ve build süreci |
-| **Styling** | TailwindCSS, Shadcn UI | Modern ve hızlı stil yapısı |
-| **Backend** | Node.js, Express | Serverless uyumlu REST API |
-| **Database** | MongoDB, Mongoose | Esnek veri modelleme |
-| **Auth** | JWT (JSON Web Tokens) | Güvenli oturum yönetimi |
-| **Deploy** | Vercel | Frontend ve Backend hosting |
+| **Frontend** | React 18, TypeScript 5 | Tip güvenli UI geliştirme |
+| **Build Tool** | Vite 5 | Hızlı geliştirme ve build süreci |
+| **Styling** | TailwindCSS 3, Shadcn UI | Modern ve hızlı stil yapısı |
+| **State Management** | React Context, TanStack Query | Auth durumu ve veri yönetimi |
+| **Backend** | Node.js, Vercel Serverless Functions | Ölçeklenebilir REST API |
+| **Database** | MongoDB Atlas, Mongoose 9 | Esnek veri modelleme |
+| **Auth** | JWT, bcryptjs | Güvenli oturum ve şifre yönetimi |
+| **Deploy** | Vercel | Zero-config frontend ve backend hosting |
+
+---
+
+## 📡 API Endpoints
+
+| Metot | Endpoint | Açıklama | Auth |
+|-------|----------|----------|------|
+| `GET` | `/api/settings` | Hizmetler, zaman dilimleri, bloklu slotlar ve adres bilgisini döndürür | ❌ |
+| `PUT` | `/api/settings` | Ayarları günceller (hizmetler, slotlar, adres vb.) | ✅ Admin |
+| `GET` | `/api/appointments?date=YYYY-MM-DD` | Belirli tarihteki dolu slotları döndürür | ❌ |
+| `GET` | `/api/appointments?all=true` | Tüm randevuları listeler (admin panel) | ❌ |
+| `POST` | `/api/appointments` | Yeni randevu oluşturur (çakışma kontrolü ile) | ❌ |
+| `PUT` | `/api/appointments` | Randevu durumunu günceller (onay, iptal, tamamlama) | ❌ |
+| `DELETE` | `/api/appointments?id=...` | Randevuyu siler | ❌ |
+| `POST` | `/api/auth/register` | Yeni kullanıcı kaydı | ❌ |
+| `POST` | `/api/auth/login` | Kullanıcı/admin girişi (JWT döndürür) | ❌ |
 
 ---
 
@@ -122,6 +158,7 @@ Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyi
 ### 1. Ön Gereksinimler
 - Node.js (v18 veya üzeri)
 - MongoDB Connection String (MongoDB Atlas önerilir)
+- Vercel CLI (`npm i -g vercel`) — yerel geliştirme için
 
 ### 2. Repoyu Klonlayın
 ```bash
@@ -145,7 +182,7 @@ JWT_SECRET=cok-gizli-super-guvenli-anahtar
 ### 5. Projeyi Başlatın
 
 **Frontend ve Backend'i birlikte çalıştırmak için (Önerilen):**
-Bu komut `vercel dev` simülasyonunu kullanır.
+Bu komut Vercel Dev ortamını simüle ederek API route'larını da çalıştırır.
 ```bash
 npm run local
 ```
@@ -156,27 +193,66 @@ Backend API çalışmayacaktır, sadece UI geliştirmesi için uygundur.
 npm run dev
 ```
 
+### 6. Mevcut Scriptler
+
+| Script | Komut | Açıklama |
+|--------|-------|----------|
+| `dev` | `npm run dev` | Sadece frontend dev server |
+| `local` | `npm run local` | Vercel dev (frontend + API) |
+| `build` | `npm run build` | Production build |
+| `build:dev` | `npm run build:dev` | Development modunda build |
+| `lint` | `npm run lint` | ESLint ile kod kontrolü |
+| `test` | `npm run test` | Testleri çalıştır (Vitest) |
+| `test:watch` | `npm run test:watch` | Testleri watch modunda çalıştır |
+
 ---
 
 ## 📂 Proje Yapısı
 
 ```
 berber-randevu-sistemi/
-├── api/                # Backend API kodları (Vercel Serverless)
-│   ├── auth/           # Kimlik doğrulama rotaları
-│   ├── models/         # Mongoose veritabanı modelleri
-│   ├── appointments.ts # Randevu işlemleri
-│   └── db.ts           # Veritabanı bağlantısı
-├── src/                # Frontend React uygulaması
-│   ├── components/     # UI bileşenleri (Button, Input vs.)
-│   ├── pages/          # Sayfalar (Giriş, Randevu, Admin vs.)
-│   ├── lib/            # Yardımcı fonksiyonlar
-│   ├── hooks/          # Custom React hooks
-│   ├── App.tsx         # Ana uygulama bileşeni
-│   └── main.tsx        # Giriş noktası
-├── public/             # Statik dosyalar
-└── ...config files     # Vite, Tailwind, TS yapılandırmaları
+├── api/                    # Backend API (Vercel Serverless Functions)
+│   ├── auth/               # Kimlik doğrulama
+│   │   ├── login.ts        # Giriş endpoint'i
+│   │   └── register.ts     # Kayıt endpoint'i
+│   ├── models/             # Mongoose modelleri
+│   │   ├── Settings.ts     # Ayarlar (hizmetler, slotlar, adres)
+│   │   └── User.ts         # Kullanıcı modeli
+│   ├── appointments.ts     # Randevu CRUD işlemleri
+│   ├── settings.ts         # Ayar okuma/güncelleme
+│   └── db.ts               # MongoDB bağlantı yönetimi
+├── src/                    # Frontend React uygulaması
+│   ├── components/         # UI bileşenleri (Shadcn UI + özel)
+│   │   └── Layout.tsx      # Genel sayfa layout'u (header, footer)
+│   ├── contexts/           # React Context
+│   │   └── AuthContext.tsx  # Kullanıcı oturum yönetimi
+│   ├── pages/              # Sayfalar
+│   │   ├── Home.tsx        # Ana sayfa
+│   │   ├── Randevu.tsx     # Randevu alma sayfası (3 adımlı)
+│   │   ├── Giris.tsx       # Kullanıcı giriş sayfası
+│   │   ├── Kayit.tsx       # Kullanıcı kayıt sayfası
+│   │   ├── Admin.tsx       # Yönetim paneli
+│   │   └── NotFound.tsx    # 404 sayfası
+│   ├── hooks/              # Custom React hook'ları
+│   ├── lib/                # Yardımcı fonksiyonlar
+│   ├── App.tsx             # Ana uygulama (routing)
+│   └── main.tsx            # Giriş noktası
+├── public/                 # Statik dosyalar
+├── vercel.json             # Vercel rewrites yapılandırması
+└── ...config files         # Vite, Tailwind, TS, ESLint yapılandırmaları
 ```
+
+---
+
+## 🚀 Deploy (Vercel)
+
+Proje Vercel ile deploy edilmek üzere yapılandırılmıştır:
+
+1. [Vercel Dashboard](https://vercel.com) üzerinden GitHub reposunu bağlayın.
+2. Environment Variables bölümünden `MONGODB_URI` ve `JWT_SECRET` değişkenlerini ekleyin.
+3. `main` branch'e her push'ta otomatik deploy tetiklenir.
+
+Detaylı deploy rehberi için: [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ---
 
